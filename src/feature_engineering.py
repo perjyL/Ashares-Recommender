@@ -26,3 +26,14 @@ def add_features(df: pd.DataFrame):
     df["Target"] = (df["收盘"].shift(-1) > df["收盘"]).astype(int)
 
     return df.dropna()
+
+
+def add_index_features(stock_df, index_df):
+    df = stock_df.join(index_df["收盘"].rename("HS300_Close"), how="left")
+
+    df["HS300_MA5"] = df["HS300_Close"].rolling(5).mean()
+    df["HS300_MA20"] = df["HS300_Close"].rolling(20).mean()
+    df["HS300_Return"] = df["HS300_Close"].pct_change()
+    df["HS300_Volatility"] = df["HS300_Return"].rolling(10).std()
+
+    return df.dropna()

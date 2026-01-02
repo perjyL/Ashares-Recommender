@@ -2,12 +2,21 @@
 INDEX_CODE = "000300"
 
 # 回测与训练时间范围
-START_DATE = "20220101"
+START_DATE = "20230101"
 END_DATE = "20251230"
 
 # 投资决策阈值
-BUY_THRESHOLD = 0.6
-SELL_THRESHOLD = 0.4
+BUY_THRESHOLD = 0.55
+SELL_THRESHOLD = 0.45
 
 # 随机种子
 RANDOM_STATE = 42
+
+# 模型选择
+MODEL_TYPE = "transformer"
+# MODEL_TYPE = "randomforest"
+
+# Transformer 参数
+TRANSFORMER_WINDOW = 20
+TRANSFORMER_EPOCHS = 8
+USE_JOINT_TRANSFORMER = True    # 是否进行联合训练

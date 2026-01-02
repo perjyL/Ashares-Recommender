@@ -22,3 +22,14 @@ def get_stock_history(symbol):
     df["date"] = pd.to_datetime(df["date"])
     df.set_index("date", inplace=True)
     return df
+
+def get_hs300_index():
+    df = ak.index_zh_a_hist(
+        symbol="000300",
+        period="daily",
+        start_date=START_DATE,
+        end_date=END_DATE
+    )
+    df["日期"] = pd.to_datetime(df["日期"])
+    df.set_index("日期", inplace=True)
+    return df
