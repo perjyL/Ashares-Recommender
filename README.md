@@ -58,6 +58,8 @@ python Stock_Recommender.py
 - `MODEL_TYPE`：`randomforest` 或 `transformer`
 - `TRANSFORMER_WINDOW` / `TRANSFORMER_EPOCHS`：Transformer 训练参数
 - `USE_JOINT_TRANSFORMER`：是否启用联合训练
+- `USE_JOINT_FINETUNE`：是否对联合模型做逐股微调
+- `JOINT_FINETUNE_EPOCHS` / `JOINT_FINETUNE_LR`：逐股微调参数
 
 ## 输出
 `output/hs300_recommendation.csv` 字段说明：

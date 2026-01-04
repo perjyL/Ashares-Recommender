@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
@@ -155,16 +156,6 @@ def train_transformer_joint(
 
     X_all, y_all = [], []
 
-    # ===== 标准化（全市场统一）=====
-    N, T, F = X_all.shape
-    scaler = StandardScaler()
-    X_all_2d = X_all.view(-1, F).numpy()
-    X_all_scaled = scaler.fit_transform(X_all_2d)
-    X_all = torch.tensor(
-        X_all_scaled.reshape(N, T, F),
-        dtype=torch.float32
-    )
-
     for df in all_dfs:
         X = df[feature_cols].values
         y = df["Target"].values
@@ -173,8 +164,20 @@ def train_transformer_joint(
             X_all.append(X[i - window:i])
             y_all.append(y[i])
 
-    X_all = torch.tensor(np.array(X_all), dtype=torch.float32)
-    y_all = torch.tensor(np.array(y_all), dtype=torch.float32)
+    if not X_all:
+        raise ValueError("联合训练样本为空")
+
+    X_all = np.array(X_all)
+    y_all = np.array(y_all)
+
+    # ===== 标准化（全市场统一）=====
+    N, T, F = X_all.shape
+    scaler = StandardScaler()
+    X_all_2d = X_all.reshape(-1, F)
+    X_all_scaled = scaler.fit_transform(X_all_2d).reshape(N, T, F)
+
+    X_all = torch.tensor(X_all_scaled, dtype=torch.float32)
+    y_all = torch.tensor(y_all, dtype=torch.float32)
 
     print(f"✅ 样本构建完成")
     print(f"   样本数: {len(X_all)}")
@@ -225,6 +228,61 @@ def train_transformer_joint(
     model.feature_cols = feature_cols
     model.eval()
 
+    return model
+
+
+def finetune_transformer(
+    base_model,
+    X,
+    y,
+    window=20,
+    epochs=1,
+    batch_size=64,
+    lr=1e-4
+):
+    if epochs <= 0:
+        return base_model
+
+    if len(X) <= window + 5:
+        raise ValueError("样本长度不足以微调 Transformer")
+
+    X_values = X.to_numpy() if hasattr(X, "to_numpy") else np.asarray(X)
+    y_values = y.to_numpy() if hasattr(y, "to_numpy") else np.asarray(y)
+
+    scaler = base_model.scaler
+    X_scaled = scaler.transform(X_values)
+
+    X_seq, y_seq = [], []
+    for i in range(window, len(X_scaled)):
+        X_seq.append(X_scaled[i - window:i])
+        y_seq.append(y_values[i])
+
+    if not X_seq:
+        raise ValueError("微调样本为空")
+
+    X_seq = torch.tensor(np.array(X_seq), dtype=torch.float32)
+    y_seq = torch.tensor(np.array(y_seq), dtype=torch.float32)
+
+    model = copy.deepcopy(base_model)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    criterion = torch.nn.BCELoss()
+
+    dataset = TensorDataset(X_seq, y_seq)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    for _ in range(epochs):
+        model.train()
+        for X_batch, y_batch in dataloader:
+            optimizer.zero_grad()
+            preds = model(X_batch).squeeze()
+            loss = criterion(preds, y_batch)
+            loss.backward()
+            optimizer.step()
+
+    model.scaler = scaler
+    model.window = window
+    model.feature_cols = getattr(base_model, "feature_cols", None)
+    model.eval()
     return model
 
 

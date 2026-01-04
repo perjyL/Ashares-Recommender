@@ -4,8 +4,16 @@ import torch
 
 from src.data_loader import get_stock_history
 from src.feature_engineering import add_features
-from src.model import train_model, train_transformer_joint
-from src.config import MODEL_TYPE, USE_JOINT_TRANSFORMER, BUY_THRESHOLD, SELL_THRESHOLD
+from src.model import train_model, train_transformer_joint, finetune_transformer
+from src.config import (
+    MODEL_TYPE,
+    USE_JOINT_TRANSFORMER,
+    USE_JOINT_FINETUNE,
+    JOINT_FINETUNE_EPOCHS,
+    JOINT_FINETUNE_LR,
+    BUY_THRESHOLD,
+    SELL_THRESHOLD,
+)
 
 
 # ======================================================
@@ -29,14 +37,22 @@ def get_recommendation(prob):
 # ======================================================
 # Transformer 专用预测函数
 # ======================================================
-def transformer_predict(model, X):
+def transformer_predict(model, X, feature_cols=None):
     """
     使用最后 window 天数据做 Transformer 预测
     """
-    if len(X) < model.window:
+    if feature_cols is None:
+        feature_cols = getattr(model, "feature_cols", None)
+
+    if feature_cols is not None and hasattr(X, "columns"):
+        X = X[feature_cols]
+
+    X_values = X.to_numpy() if hasattr(X, "to_numpy") else X
+
+    if len(X_values) < model.window:
         return None
 
-    X_scaled = model.scaler.transform(X)
+    X_scaled = model.scaler.transform(X_values)
 
     seq = torch.tensor(
         X_scaled[-model.window:],
@@ -126,7 +142,20 @@ def hs300_recommendation():
                     else model
                 )
 
-                prob = transformer_predict(model_use, X)
+                if USE_JOINT_TRANSFORMER and USE_JOINT_FINETUNE and JOINT_FINETUNE_EPOCHS > 0:
+                    try:
+                        model_use = finetune_transformer(
+                            model_use,
+                            X.iloc[:-1],
+                            y.iloc[:-1],
+                            window=model_use.window,
+                            epochs=JOINT_FINETUNE_EPOCHS,
+                            lr=JOINT_FINETUNE_LR
+                        )
+                    except ValueError:
+                        pass
+
+                prob = transformer_predict(model_use, X, feature_cols=features)
                 if prob is None:
                     raise ValueError("Transformer 数据不足")
 
