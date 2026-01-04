@@ -3,7 +3,7 @@ from src.feature_engineering import add_features
 from src.model import train_model
 from src.predictor import make_decision
 from src.visualization import plot_price_ma, plot_macd, plot_volume
-from src.config import INDEX_CODE, MODEL_TYPE
+from src.config import INDEX_CODE, MODEL_TYPE, START_DATE, END_DATE, USE_JOINT_TRANSFORMER, USE_JOINT_FINETUNE
 from src.recommender import hs300_recommendation
 import pandas as pd
 
@@ -51,3 +51,11 @@ if __name__ == "__main__":
 
     print("\n===== 沪深300 推荐结果（Top 10） =====")
     print(df.head(10))
+
+    model_desc = MODEL_TYPE
+    if MODEL_TYPE == "transformer" and USE_JOINT_TRANSFORMER:
+        model_desc = "transformer + joint"
+        if USE_JOINT_FINETUNE:
+            model_desc += " + finetune"
+
+    print(f"\n时间范围: {START_DATE} - {END_DATE} | 模型: {model_desc}")
