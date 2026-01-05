@@ -121,8 +121,14 @@ def hs300_recommendation():
 
         try:
             # 1️⃣ 数据加载
-            df = get_stock_history(code)
-            df = add_features(df)
+            df_raw = get_stock_history(code)
+            if df_raw.empty:
+                raise ValueError("行情数据为空")
+
+            last_date = df_raw.index[-1]
+            last_close = df_raw["收盘"].iloc[-1]
+
+            df = add_features(df_raw)
 
             X = df[features]
             y = df["Target"]
@@ -168,6 +174,8 @@ def hs300_recommendation():
             results.append({
                 "Code": code,
                 "Name": name,
+                "Last_Date": last_date.strftime("%Y-%m-%d"),
+                "Last_Close": round(float(last_close), 2),
                 "Up_Prob": round(prob, 4),
                 "Recommendation": rec
             })
