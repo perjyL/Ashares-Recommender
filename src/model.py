@@ -22,6 +22,29 @@ def train_rf(X, y):
     return model
 
 
+# ========== XGBoost ==========
+def train_xgb(X, y):
+    try:
+        from xgboost import XGBClassifier
+    except ImportError as exc:
+        raise ImportError("未安装 xgboost，请先执行: pip install xgboost") from exc
+
+    model = XGBClassifier(
+        n_estimators=300,
+        max_depth=5,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective="binary:logistic",
+        eval_metric="logloss",
+        random_state=RANDOM_STATE,
+        n_jobs=-1,
+        tree_method="hist"
+    )
+    model.fit(X, y)
+    return model
+
+
 # ========== Transformer ==========
 import torch
 import torch.nn as nn
@@ -291,7 +314,9 @@ def finetune_transformer(
 def train_model(X, y, model_type="randomforest"):
     if model_type == "randomforest":
         return train_rf(X, y)
+    elif model_type == "xgboost":
+        return train_xgb(X, y)
     elif model_type == "transformer":
         return train_transformer(X, y)
     else:
-        raise ValueError("model_type must be 'rf' or 'transformer'")
+        raise ValueError("model_type must be 'randomforest', 'xgboost', or 'transformer'")
