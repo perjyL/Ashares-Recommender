@@ -1,16 +1,18 @@
 # 数据来源（AkShare）
 import akshare as ak
+import pandas as pd
 
 # 1.指数成分股（以沪深300为例）
 # 获取沪深300成分股
 stocks = ak.index_stock_cons_csindex(symbol="000300")
 
 # 2.个股历史行情（日频）
+symbol = "603296"
 df = ak.stock_zh_a_hist(
-    symbol="603296",
+    symbol=symbol,
     period="daily",
     start_date="20230101",
-    end_date="20250107",
+    end_date="20260108",
     adjust="qfq"
 )
 
@@ -39,8 +41,26 @@ df["VOL_MA5"] = df["成交量"].rolling(5).mean()
 df["Return"] = df["收盘"].pct_change()
 df["Volatility"] = df["Return"].rolling(10).std()
 
+today = pd.Timestamp.today().date()
+last_trade_date = pd.to_datetime(df["日期"]).max().date()
 
-import pandas as pd
+if last_trade_date == today:
+    try:
+        spot = ak.stock_zh_a_spot_em()
+        symbol_code = symbol[-6:]
+        spot_row = spot.loc[spot["代码"] == symbol_code]
+        if not spot_row.empty:
+            show_cols = [
+                "代码", "名称", "最新价", "涨跌幅", "涨跌额",
+                "今开", "最高", "最低", "昨收", "成交量", "成交额"
+            ]
+            show_cols = [col for col in show_cols if col in spot_row.columns]
+            print("\n===== 当日盘中行情 =====")
+            print(spot_row[show_cols])
+        else:
+            print("\n当日盘中行情为空：未匹配到代码")
+    except Exception as exc:
+        print(f"\n获取当日盘中行情失败：{exc}")
 
 # 设置全局显示选项（显示所有行和列）
 pd.set_option('display.max_rows', None)      # 显示所有行
